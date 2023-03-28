@@ -8,15 +8,17 @@ import android.provider.Settings.Global
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
-import android.view.Display
 import android.widget.*
-import androidx.core.widget.addTextChangedListener
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(),SeekBar.OnSeekBarChangeListener{
     var States= arrayOf(false,false,false)
 
     lateinit var rswitch: Switch
@@ -31,68 +33,85 @@ class MainActivity : AppCompatActivity() {
     lateinit var displayColor: TextView
     lateinit var reset: Button
     var BoxColor= arrayOf(0,0,0)
-    private lateinit var MyViewModel: MyViewModel
+    private lateinit var myViewModel: MyViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         connectViews()
-        setupListeners()
         MyPreferencesRepository.initialize(this)
-        MyViewModel = ViewModelProvider(this)[MyViewModel::class.java]
-        MyViewModel.loadUIValues()
-        GlobalScope.launch {
+        myViewModel = ViewModelProvider(this)[MyViewModel::class.java]
 
+        lifecycleScope.launch{
             collectFlows()
         }
+        myViewModel.loadUIValues()
+        setupListeners()
+
     }
 
-    suspend fun collectFlows(){
-        MyViewModel.rcolor.collectLatest {
-            rseekbar.setProgress(it)
-            reditview.setText(String.format("%.2f", (it.toDouble() / 255.toDouble())))
-        }
-        MyViewModel.gcolor.collectLatest {
-            rseekbar.setProgress(it)
-            reditview.setText(String.format("%.2f", (it.toDouble() / 255.toDouble())))
-        }
-        MyViewModel.bcolor.collectLatest {
-            rseekbar.setProgress(it)
-            reditview.setText(String.format("%.2f", (it.toDouble() / 255.toDouble())))
-        }
-        MyViewModel.colors.collectLatest {
-            displayColor.setBackgroundColor(Color.argb(255,it[0],it[1],it[2]))
-        }
-        MyViewModel.rswitch.collectLatest {
-            if (it) {
-                rseekbar.isEnabled = true
-                reditview.isEnabled = true
-            } else {
-                reditview.isEnabled = false
-                rseekbar.isEnabled = false
+    private suspend fun collectFlows() {
+        lifecycleScope.async {
+            myViewModel.gcolor.collectLatest {
+                gseekbar.progress = it
+                geditview.setText(String.format("%.2f", (it.toDouble() / 255.toDouble())))
             }
         }
-
-        MyViewModel.gswitch.collectLatest {
-            if (it) {
-                gseekbar.isEnabled = true
-                geditview.isEnabled = true
-            } else {
-                geditview.isEnabled = false
-                gseekbar.isEnabled = false
+        lifecycleScope.async {
+            myViewModel.rcolor.collectLatest {
+                rseekbar.progress = it
+                reditview.setText(String.format("%.2f", (it.toDouble() / 255.toDouble())))
             }
         }
-
-        MyViewModel.bswitch.collectLatest {
-            if (it) {
-                bseekbar.isEnabled = true
-                beditview.isEnabled = true
-            } else {
-                beditview.isEnabled = false
-                bseekbar.isEnabled = false
+        lifecycleScope.async {
+            myViewModel.bcolor.collectLatest {
+                bseekbar.progress = it
+                beditview.setText(String.format("%.2f", (it.toDouble() / 255.toDouble())))
             }
         }
+        lifecycleScope.async {
+            myViewModel.colors.collectLatest {
+                displayColor.setBackgroundColor(Color.argb(255,it[0],it[1],it[2]))
+            }
+        }
+        lifecycleScope.async {
+            myViewModel.rswitch.collectLatest {
+                if (it) {
+                    rseekbar.isEnabled = true
+                    reditview.isEnabled = true
+                } else {
+                    reditview.isEnabled = false
+                    rseekbar.isEnabled = false
+                }
+            }
 
+        }
+
+        lifecycleScope.async {
+            myViewModel.gswitch.collectLatest {
+                if (it) {
+                    gseekbar.isEnabled = true
+                    geditview.isEnabled = true
+                } else {
+                    geditview.isEnabled = false
+                    gseekbar.isEnabled = false
+                }
+            }
+
+        }
+
+        lifecycleScope.async {
+            myViewModel.bswitch.collectLatest {
+                if (it) {
+                    bseekbar.isEnabled = true
+                    beditview.isEnabled = true
+                } else {
+                    beditview.isEnabled = false
+                    bseekbar.isEnabled = false
+                }
+            }
+
+        }
     }
     // SET UP CONNECT VIEWS
     private fun connectViews() {
@@ -110,22 +129,22 @@ class MainActivity : AppCompatActivity() {
     }
     //SET UP LISTENERS
     private fun setupListeners() {
-        gseekbar.setOnSeekBarChangeListener(SBlistener("green"))
+        gseekbar.setOnSeekBarChangeListener(this)
         geditview.addTextChangedListener(ETlistener("green"))
-        rseekbar.setOnSeekBarChangeListener(SBlistener("red"))
+        rseekbar.setOnSeekBarChangeListener(this)
         reditview.addTextChangedListener(ETlistener("red"))
-        bseekbar.setOnSeekBarChangeListener(SBlistener("blue"))
+        bseekbar.setOnSeekBarChangeListener(this)
         beditview.addTextChangedListener(ETlistener("blue"))
         SWlistener(rswitch,"red")
         SWlistener(gswitch, "green")
         SWlistener(bswitch,"blue")
         reset.setOnClickListener {
-            MyViewModel.saveColor(0,"red")
-            MyViewModel.saveColor(0,"green")
-            MyViewModel.saveColor(0,"blue")
-            MyViewModel.saveSwitch(false,"red")
-            MyViewModel.saveSwitch(false,"green")
-            MyViewModel.saveSwitch(false,"blue")
+            myViewModel.saveColor(0,"red")
+            myViewModel.saveColor(0,"green")
+            myViewModel.saveColor(0,"blue")
+            myViewModel.saveSwitch(false,"red")
+            myViewModel.saveSwitch(false,"green")
+            myViewModel.saveSwitch(false,"blue")
         }
 
 
@@ -135,13 +154,12 @@ class MainActivity : AppCompatActivity() {
 
     fun SWlistener(SW:Switch,clr:String){
         SW.setOnCheckedChangeListener {  buttonView, isChecked ->
-            MyViewModel.saveSwitch(isChecked,clr)
+            myViewModel.saveSwitch(isChecked,clr)
             when(clr){
                 "red"-> States[0]=isChecked
                 "green"-> States[1]=isChecked
                 "blue"-> States[2]=isChecked
             }
-            updateColor()
         }
     }
     //EDIT TEXT LISTENER FUNCTION
@@ -152,17 +170,15 @@ class MainActivity : AppCompatActivity() {
                     try{
                         var ColorValue=s.toString().toFloat()
                         if (ColorValue>1){
-                            ColorValue=1F
                             val message = "Max Value is 1!"
                             val duration = Toast.LENGTH_SHORT // or Toast.LENGTH_LONG
                             val toast = Toast.makeText(applicationContext, message, duration)
                             toast.show()
-                            MyViewModel.saveColor(255,clr)
+                            myViewModel.saveColor(255,clr)
                         }
                         else{
-                            MyViewModel.saveColor((ColorValue*255).toInt(),clr)
+                            myViewModel.saveColor((ColorValue*255).toInt(),clr)
                         }
-                        updateColor()
                     }
                     catch (e:Exception){
 
@@ -209,11 +225,39 @@ class MainActivity : AppCompatActivity() {
 
             override fun onStopTrackingTouch(seekBar: SeekBar) {
 
-                MyViewModel.saveColor(seekBar.progress,clr)
+
 
             }
         }
         return mySeekbarListener
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+    }
+
+    override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+
+    }
+
+    override fun onStartTrackingTouch(seekBar: SeekBar?) {
+    }
+
+    override fun onStopTrackingTouch(seekBar: SeekBar?) {
+        seekBar?.let {
+            when(it.id){
+                R.id.sb_red->{
+                    myViewModel.saveColor(it.progress, "red")
+                }
+                R.id.sb_green->{
+                    myViewModel.saveColor(it.progress, "green")
+                }
+                R.id.sb_blue->{
+                    myViewModel.saveColor(it.progress, "blue")
+                }
+            }
+        }
     }
 
 

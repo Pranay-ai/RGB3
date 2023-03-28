@@ -15,22 +15,22 @@ class MyViewModel:ViewModel() {
 
     private val prefs = MyPreferencesRepository.get()
     private val BoxColors = IntArray(3)
-    private val _states= MutableSharedFlow<IntArray>()
-    private val _bcolor = MutableSharedFlow<Int>()
-    private val _gcolor = MutableSharedFlow<Int>()
-    private val _rcolor = MutableSharedFlow<Int>()
-    private val _rswitch = MutableSharedFlow<Boolean>()
-    private val _bswitch = MutableSharedFlow<Boolean>()
-    private val _gswitch = MutableSharedFlow<Boolean>()
-    private val _colors= MutableSharedFlow<IntArray>()
-    val bcolor = _bcolor.asSharedFlow()
-    val rcolor = _rcolor.asSharedFlow()
-    val gcolor = _rcolor.asSharedFlow()
-    val bswitch = _bswitch.asSharedFlow()
-    val rswitch=_rswitch.asSharedFlow()
-    val gswitch=_gswitch.asSharedFlow()
-    val colors=_colors.asSharedFlow()
-    val states=_states.asSharedFlow()
+    private val _states= MutableStateFlow<IntArray>(IntArray(3))
+    private val _bcolor = MutableStateFlow<Int>(0)
+    private val _gcolor = MutableStateFlow<Int>(0)
+    private val _rcolor = MutableStateFlow<Int>(0)
+    private val _rswitch = MutableStateFlow<Boolean>(false)
+    private val _bswitch = MutableStateFlow<Boolean>(false)
+    private val _gswitch = MutableStateFlow<Boolean>(false)
+    private val _colors= MutableStateFlow<IntArray>(IntArray(3))
+    val bcolor = _bcolor.asStateFlow()
+    val rcolor = _rcolor.asStateFlow()
+    val gcolor = _gcolor.asStateFlow()
+    val bswitch = _bswitch.asStateFlow()
+    val rswitch=_rswitch.asStateFlow()
+    val gswitch=_gswitch.asStateFlow()
+    val colors=_colors.asStateFlow()
+    val states=_states.asStateFlow()
 
     fun saveColor(i: Int, clr: String) {
         viewModelScope.launch {
@@ -66,10 +66,10 @@ class MyViewModel:ViewModel() {
                 arr[0]=it.first
                 arr[1]=it.second
                 arr[2]=it.third
-                _rcolor.emit(it.first)
-                _gcolor.emit(it.second)
-                _bcolor.emit(it.third)
-                _colors.emit(arr)
+                _rcolor.value = it.first
+                _gcolor.value = it.second
+                _bcolor.value = it.third
+                _colors.value = arr
             }
         }
 
@@ -78,9 +78,9 @@ class MyViewModel:ViewModel() {
                     r,g,b->
                 Triple(r,g,b)
             }.collectLatest {
-                _rswitch.emit(it.first)
-                _gswitch.emit(it.second)
-                _bswitch.emit(it.third)
+                _rswitch.value = it.first
+                _gswitch.value = it.second
+                _bswitch.value = it.third
             }
         }
 
